@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Timer Workout 10 Esercizi</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      width: 100%;
+      background: #000;
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+    #timer-container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100%;
+      width: 100%;
+      text-align: center;
+    }
+    #phase-title {
+      font-size: 15vw; /* grandezza variabile con viewport width */
+      margin: 0;
+      padding: 0;
+    }
+    #timer {
+      font-size: 25vw;
+      margin: 0;
+      padding: 0;
+    }
+    .exercise {
+      color: #0f0; /* verde */
+    }
+    .rest {
+      color: #f00; /* rosso */
+    }
+  </style>
+</head>
+<body>
+  <div id="timer-container">
+    <div id="phase-title">Riscaldamento</div>
+    <div id="timer">01:00</div>
+  </div>
+
+  <script>
+    // Definiamo fasi: 1 minuto riscaldamento (exercise) + 10 esercizi (40s exercise + 20s rest)
+    const phases = [
+      { name: "Riscaldamento", duration: 60,       type: "exercise" },
+      { name: "Leg Flutters",   duration: 40,       type: "exercise" },
+      { name: "Riposo",         duration: 20,       type: "rest"     },
+      { name: "Leg Raisers",    duration: 40,       type: "exercise" },
+      { name: "Riposo",         duration: 20,       type: "rest"     },
+      { name: "Jumping Jacks",  duration: 40,       type: "exercise" },
+      { name: "Riposo",         duration: 20,       type: "rest"     },
+      { name: "Star Crunches",  duration: 40,       type: "exercise" },
+      { name: "Riposo",         duration: 20,       type: "rest"     },
+      { name: "Seated in & outs", duration: 40,     type: "exercise" },
+      { name: "Riposo",         duration: 20,       type: "rest"     },
+      { name: "CR7 Crunches",   duration: 40,       type: "exercise" },
+      { name: "Riposo",         duration: 20,       type: "rest"     },
+      { name: "Squat jump",     duration: 40,       type: "exercise" },
+      { name: "Riposo",         duration: 20,       type: "rest"     },
+      { name: "Russian Twists", duration: 40,       type: "exercise" },
+      { name: "Riposo",         duration: 20,       type: "rest"     },
+      { name: "Bicycle",        duration: 40,       type: "exercise" },
+      { name: "Riposo",         duration: 20,       type: "rest"     },
+      { name: "Side Squat",     duration: 40,       type: "exercise" },
+      { name: "Riposo",         duration: 20,       type: "rest"     }
+    ];
+
+    let currentPhase = 0;
+    let timeLeft     = phases[0].duration;
+    const titleEl    = document.getElementById("phase-title");
+    const timerEl    = document.getElementById("timer");
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60).toString().padStart(2, "0");
+      const s = (sec % 60).toString().padStart(2, "0");
+      return `${m}:${s}`;
+    }
+
+    function applyColor(phase) {
+      titleEl.className = phase.type;
+      timerEl.className = phase.type;
+    }
+
+    function startTimer() {
+      const phase = phases[currentPhase];
+      titleEl.textContent = phase.name;
+      applyColor(phase);
+      timeLeft = phase.duration;
+      timerEl.textContent = formatTime(timeLeft);
+
+      const intervalId = setInterval(() => {
+        timeLeft--;
+        timerEl.textContent = formatTime(timeLeft);
+
+        if (timeLeft <= 0) {
+          clearInterval(intervalId);
+          currentPhase++;
+
+          if (currentPhase >= phases.length) {
+            titleEl.textContent = "Allenamento completato! (sei un mito)";
+            titleEl.className = "";
+            timerEl.textContent = "";
+            return;
+          }
+          startTimer(); // passa alla fase successiva
+        }
+      }, 1000);
+    }
+
+    // Avvia al caricamento della pagina
+    window.onload = startTimer;
+  </script>
+</body>
+</html>
