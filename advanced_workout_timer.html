@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Elite Workout Timer</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+      background: radial-gradient(ellipse at center, #0d1117 0%, #010409 100%);
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Animated background particles */
+    .bg-particles {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      opacity: 0.1;
+      z-index: -1;
+    }
+
+    .particle {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: #30d158;
+      border-radius: 50%;
+      animation: float 6s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) translateX(0) scale(1); opacity: 0.3; }
+      33% { transform: translateY(-20px) translateX(10px) scale(1.2); opacity: 0.8; }
+      66% { transform: translateY(10px) translateX(-10px) scale(0.8); opacity: 0.5; }
+    }
+
+    #timer-container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      width: 100vw;
+      position: relative;
+    }
+
+    #phase-title {
+      font-size: clamp(2.5rem, 8vw, 7rem);
+      font-weight: 200;
+      margin-bottom: 1rem;
+      transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      text-align: center;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #ffffff 0%, #e1e1e1 100%);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: none;
+      filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.1));
+    }
+
+    #circular-timer {
+      position: relative;
+      width: clamp(280px, 45vw, 450px);
+      height: clamp(280px, 45vw, 450px);
+      margin: 2rem 0;
+      filter: drop-shadow(0 0 30px rgba(48, 209, 88, 0.3));
+    }
+
+    #timer-circle {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+
+    #timer-background {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.08);
+      stroke-width: 12;
+    }
+
+    #timer-progress {
+      fill: none;
+      stroke-width: 12;
+      stroke-linecap: round;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      filter: drop-shadow(0 0 15px currentColor);
+    }
+
+    #timer-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: clamp(2.5rem, 8vw, 5rem);
+      font-weight: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      text-align: center;
+      letter-spacing: -0.02em;
+      text-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+    }
+
+    #controls {
+      display: flex;
+      gap: 2rem;
+      margin-top: 2rem;
+      align-items: center;
+    }
+
+    .control-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      width: 80px;
+      height: 80px;
+      color: #fff;
+      font-size: 1.3rem;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .control-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .control-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: scale(1.1) translateY(-2px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .control-btn:hover::before {
+      opacity: 1;
+    }
+
+    .control-btn:active {
+      transform: scale(1.05) translateY(0);
+    }
+
+    /* Stats Dashboard */
+    #stats-dashboard {
+      position: absolute;
+      top: 2rem;
+      left: 2rem;
+      right: 2rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      z-index: 10;
+    }
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 1rem;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+      background: rgba(255, 255, 255, 0.08);
+      transform: translateY(-2px);
+    }
+
+    .stat-value {
+      font-size: 1.8rem;
+      font-weight: 300;
+      color: #30d158;
+      text-shadow: 0 0 10px rgba(48, 209, 88, 0.3);
+    }
+
+    .stat-label {
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.7);
+      margin-top: 0.25rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Overall Progress Bar */
+    #overall-progress {
+      position: absolute;
+      bottom: 3rem;
+      left: 2rem;
+      right: 2rem;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    #overall-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #30d158 0%, #32d74b 50%, #30d158 100%);
+      width: 0%;
+      transition: width 0.5s ease;
+      box-shadow: 0 0 20px rgba(48, 209, 88, 0.4);
+    }
+
+    #phase-info {
+      position: absolute;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      font-size: clamp(1rem, 3vw, 1.3rem);
+      opacity: 0.8;
+      font-weight: 300;
+      letter-spacing: 0.02em;
+    }
+
+    /* Pre-workout setup */
+    #pre-workout {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(ellipse at center, #1a1a2e 0%, #0d1117 100%);
+      backdrop-filter: blur(30px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      opacity: 1;
+      transition: opacity 0.5s ease;
+    }
+
+    #pre-workout h2 {
+      font-size: clamp(2rem, 8vw, 4rem);
+      font-weight: 200;
+      margin-bottom: 3rem;
+      text-align: center;
+      background: linear-gradient(135deg, #ffffff 0%, #e1e1e1 100%);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .gym-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      padding: 1.2rem 2.5rem;
+      color: #fff;
+      font-size: 1.2rem;
+      font-weight: 300;
+      cursor: pointer;
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      backdrop-filter: blur(20px);
+      margin: 0.8rem;
+      min-width: 250px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .gym-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+      transition: left 0.5s ease;
+    }
+
+    .gym-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.3);
+      transform: scale(1.05) translateY(-3px);
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .gym-btn:hover::before {
+      left: 100%;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* Phase-specific colors and effects */
+    .exercise {
+      color: #30d158;
+    }
+
+    .exercise #timer-progress {
+      stroke: #30d158;
+      animation: pulse-ring 2s ease-in-out infinite;
+    }
+
+    .exercise #phase-title {
+      background: linear-gradient(135deg, #30d158 0%, #32d74b 100%);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .rest {
+      color: #ff453a;
+    }
+
+    .rest #timer-progress {
+      stroke: #ff453a;
+      animation: pulse-ring-red 2s ease-in-out infinite;
+    }
+
+    .rest #phase-title {
+      background: linear-gradient(135deg, #ff453a 0%, #ff6b6b 100%);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    @keyframes pulse-ring {
+      0% { filter: drop-shadow(0 0 15px rgba(48, 209, 88, 0.3)); }
+      50% { filter: drop-shadow(0 0 30px rgba(48, 209, 88, 0.6)); }
+      100% { filter: drop-shadow(0 0 15px rgba(48, 209, 88, 0.3)); }
+    }
+
+    @keyframes pulse-ring-red {
+      0% { filter: drop-shadow(0 0 15px rgba(255, 69, 58, 0.3)); }
+      50% { filter: drop-shadow(0 0 30px rgba(255, 69, 58, 0.6)); }
+      100% { filter: drop-shadow(0 0 15px rgba(255, 69, 58, 0.3)); }
+    }
+
+    /* Pulse animation for countdown */
+    @keyframes intense-pulse {
+      0% { 
+        transform: translate(-50%, -50%) scale(1);
+        text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+      }
+      50% { 
+        transform: translate(-50%, -50%) scale(1.1);
+        text-shadow: 0 0 40px rgba(255, 255, 255, 0.8);
+      }
+      100% { 
+        transform: translate(-50%, -50%) scale(1);
+        text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+      }
+    }
+
+    .pulse #timer-text {
+      animation: intense-pulse 0.8s ease-in-out infinite;
+    }
+
+    /* Completion celebration */
+    .completed {
+      background: radial-gradient(circle, #30d158 0%, #0d1117 70%);
+      animation: celebrate 3s ease-in-out;
+    }
+
+    @keyframes celebrate {
+      0% { filter: hue-rotate(0deg) brightness(1); }
+      25% { filter: hue-rotate(90deg) brightness(1.2); }
+      50% { filter: hue-rotate(180deg) brightness(1.4); }
+      75% { filter: hue-rotate(270deg) brightness(1.2); }
+      100% { filter: hue-rotate(360deg) brightness(1); }
+    }
+
+    /* Responsive design */
+    @media (max-width: 768px) {
+      #stats-dashboard {
+        grid-template-columns: repeat(2, 1fr);
+        top: 1rem;
+        left: 1rem;
+        right: 1rem;
+      }
+      
+      #controls {
+        gap: 1.5rem;
+      }
+      
+      .control-btn {
+        width: 70px;
+        height: 70px;
+        font-size: 1.1rem;
+      }
+
+      #overall-progress {
+        bottom: 2rem;
+        left: 1rem;
+        right: 1rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      #stats-dashboard {
+        grid-template-columns: 1fr;
+      }
+      
+      .stat-card {
+        padding: 0.8rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Animated background particles -->
+  <div class="bg-particles" id="particles"></div>
+
+  <!-- Pre-workout setup screen -->
+  <div id="pre-workout">
+    <h2>Choose Your Training Environment</h2>
+    <div>
+      <button class="gym-btn" id="gym-yes">
+        <i class="fas fa-dumbbell" style="margin-right: 0.5rem;"></i>
+        Yes, I'm at the gym
+      </button>
+      <button class="gym-btn" id="gym-no">
+        <i class="fas fa-home" style="margin-right: 0.5rem;"></i>
+        No, home workout
+      </button>
+    </div>
+  </div>
+
+  <div id="timer-container" class="hidden">
+    <!-- Stats Dashboard -->
+    <div id="stats-dashboard">
+      <div class="stat-card">
+        <div class="stat-value" id="total-time">20:00</div>
+        <div class="stat-label">Total Time</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="exercises-completed">0/10</div>
+        <div class="stat-label">Exercises</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="calories-burned">0</div>
+        <div class="stat-label">Calories</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="time-remaining">20:00</div>
+        <div class="stat-label">Remaining</div>
+      </div>
+    </div>
+
+    <div id="phase-title">Warm Up</div>
+    
+    <div id="circular-timer">
+      <svg id="timer-circle" viewBox="0 0 200 200">
+        <circle id="timer-background" cx="100" cy="100" r="85"></circle>
+        <circle id="timer-progress" cx="100" cy="100" r="85"></circle>
+      </svg>
+      <div id="timer-text">01:00</div>
+    </div>
+
+    <div id="controls">
+      <button id="pause-btn" class="control-btn">
+        <i class="fas fa-pause"></i>
+      </button>
+      <button id="skip-btn" class="control-btn">
+        <i class="fas fa-forward"></i>
+      </button>
+      <button id="restart-btn" class="control-btn">
+        <i class="fas fa-redo"></i>
+      </button>
+    </div>
+
+    <!-- Overall Progress Bar -->
+    <div id="overall-progress">
+      <div id="overall-progress-fill"></div>
+    </div>
+  </div>
+
+  <script>
+    // Enhanced phases with gym exercises
+    const phases = [
+      { name: "Warm Up", duration: 60, type: "exercise", calisthenics: true, gym: false, calories: 5 },
+      { name: "Leg Flutters", duration: 40, type: "exercise", calisthenics: true, gym: false, calories: 4 },
+      { name: "Rest", duration: 20, type: "rest", calisthenics: true, gym: false, calories: 1 },
+      { name: "Leg Raisers", duration: 40, type: "exercise", calisthenics: true, gym: false, calories: 4 },
+      { name: "Rest", duration: 20, type: "rest", calisthenics: true, gym: false, calories: 1 },
+      { name: "Jumping Jacks", duration: 40, type: "exercise", calisthenics: true, gym: false, calories: 6 },
+      { name: "Rest", duration: 20, type: "rest", calisthenics: true, gym: false, calories: 1 },
+      { name: "Star Crunches", duration: 40, type: "exercise", calisthenics: true, gym: false, calories: 4 },
+      { name: "Rest", duration: 20, type: "rest", calisthenics: true, gym: false, calories: 1 },
+      { name: "Seated in & outs", duration: 40, type: "exercise", calisthenics: true, gym: false, calories: 4 },
+      { name: "Rest", duration: 20, type: "rest", calisthenics: true, gym: false, calories: 1 },
+      { name: "CR7 Crunches", duration: 40, type: "exercise", calisthenics: true, gym: false, calories: 5 },
+      { name: "Rest", duration: 20, type: "rest", calisthenics: true, gym: false, calories: 1 },
+      { name: "Squat jump", duration: 40, type: "exercise", calisthenics: true, gym: false, calories: 6 },
+      { name: "Rest", duration: 20, type: "rest", calisthenics: true, gym: false, calories: 1 },
+      { name: "Russian Twists", duration: 40, type: "exercise", calisthenics: true, gym: false, calories: 4 },
+      { name: "Rest", duration: 20, type: "rest", calisthenics: true, gym: false, calories: 1 },
+      { name: "Bicycle", duration: 40, type: "exercise", calisthenics: true, gym: false, calories: 5 },
+      { name: "Rest", duration: 20, type: "rest", calisthenics: true, gym: false, calories: 1 },
+      { name: "Side Squat", duration: 40, type: "exercise", calisthenics: true, gym: false, calories: 5 },
+      { name: "Rest", duration: 20, type: "rest", calisthenics: true, gym: false, calories: 1 },
+      
+      // Gym exercises
+      { name: "Bench Weights push up", duration: 40, type: "exercise", calisthenics: false, gym: true, calories: 8 },
+      { name: "Rest", duration: 60, type: "rest", calisthenics: false, gym: true, calories: 2 },
+      { name: "Deep Squat Weights", duration: 40, type: "exercise", calisthenics: false, gym: true, calories: 9 },
+      { name: "Rest", duration: 60, type: "rest", calisthenics: false, gym: true, calories: 2 },
+      { name: "Arms pull ups", duration: 40, type: "exercise", calisthenics: false, gym: true, calories: 7 },
+      { name: "Rest", duration: 60, type: "rest", calisthenics: false, gym: true, calories: 2 },
+      { name: "Bar Pull ups", duration: 40, type: "exercise", calisthenics: false, gym: true, calories: 8 },
+      { name: "Rest", duration: 60, type: "rest", calisthenics: false, gym: true, calories: 2 },
+      { name: "Chair Leg Raise", duration: 40, type: "exercise", calisthenics: false, gym: true, calories: 6 }
+    ];
+
+    // Global variables
+    let currentPhase = 0;
+    let timeLeft = phases[0].duration;
+    let totalTime = phases[0].duration;
+    let intervalId = null;
+    let isPaused = false;
+    let isAtGym = false;
+    let activePhases = [];
+    let totalCaloriesBurned = 0;
+    let exercisesCompleted = 0;
+    let totalWorkoutTime = 0;
+    let workoutStartTime = null;
+
+    // DOM elements
+    const titleEl = document.getElementById("phase-title");
+    const timerEl = document.getElementById("timer-text");
+    const progressEl = document.getElementById("timer-progress");
+    const containerEl = document.getElementById("timer-container");
+    const pauseBtn = document.getElementById("pause-btn");
+    const skipBtn = document.getElementById("skip-btn");
+    const restartBtn = document.getElementById("restart-btn");
+
+    // Stats elements
+    const totalTimeEl = document.getElementById("total-time");
+    const exercisesCompletedEl = document.getElementById("exercises-completed");
+    const caloriesBurnedEl = document.getElementById("calories-burned");
+    const timeRemainingEl = document.getElementById("time-remaining");
+    const overallProgressEl = document.getElementById("overall-progress-fill");
+
+    // Circle progress configuration
+    const radius = 85;
+    const circumference = 2 * Math.PI * radius;
+    progressEl.style.strokeDasharray = circumference;
+
+    // Speech synthesis
+    let speech = null;
+    if ('speechSynthesis' in window) {
+      speech = window.speechSynthesis;
+    }
+
+    function speak(text) {
+      if (speech) {
+        speech.cancel();
+        
+        setTimeout(() => {
+          const utterance = new SpeechSynthesisUtterance(text);
+          
+          const voices = speech.getVoices();
+          // Prioritize female voices for better experience
+          const preferredVoices = voices.filter(voice => 
+            voice.lang.startsWith('en') && 
+            (voice.name.includes('Samantha') ||
+             voice.name.includes('Karen') ||
+             voice.name.includes('Moira') ||
+             voice.name.includes('Zira') ||
+             voice.name.includes('Susan') ||
+             voice.name.includes('Hazel') ||
+             voice.name.includes('Female') ||
+             voice.name.toLowerCase().includes('female') ||
+             (voice.name.includes('Google') && voice.name.includes('en-US-Standard-C')) ||
+             (voice.name.includes('Google') && voice.name.includes('en-US-Standard-E')) ||
+             (voice.name.includes('Google') && voice.name.includes('en-US-Standard-F')) ||
+             (voice.name.includes('Microsoft') && voice.name.includes('Zira')))
+          );
+          
+          if (preferredVoices.length > 0) {
+            utterance.voice = preferredVoices[0];
+          }
+          
+          utterance.lang = 'en-US';
+          utterance.rate = 1.0; // Slower for more natural sound
+          utterance.pitch = 1.0; // Slightly higher pitch for female voice
+          utterance.volume = 1;
+          
+          speech.speak(utterance);
+        }, 50);
+      }
+    }
+
+    // Create animated background particles
+    function createParticles() {
+      const particlesContainer = document.getElementById('particles');
+      for (let i = 0; i < 50; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        particle.style.left = Math.random() * 100 + '%';
+        particle.style.top = Math.random() * 100 + '%';
+        particle.style.animationDelay = Math.random() * 6 + 's';
+        particle.style.animationDuration = (Math.random() * 4 + 4) + 's';
+        particlesContainer.appendChild(particle);
+      }
+    }
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60).toString().padStart(2, "0");
+      const s = (sec % 60).toString().padStart(2, "0");
+      return `${m}:${s}`;
+    }
+
+    function updateProgress(timeLeft, totalTime) {
+      const progress = (totalTime - timeLeft) / totalTime;
+      const offset = circumference * (1 - progress);
+      progressEl.style.strokeDashoffset = offset;
+    }
+
+    function updateOverallProgress() {
+      const totalPhases = activePhases.length;
+      const progress = ((currentPhase + 1) / totalPhases) * 100;
+      overallProgressEl.style.width = progress + '%';
+    }
+
+    function updateStats() {
+      // Calculate remaining time
+      let remainingTime = timeLeft;
+      for (let i = currentPhase + 1; i < activePhases.length; i++) {
+        remainingTime += activePhases[i].duration;
+      }
+      
+      timeRemainingEl.textContent = formatTime(remainingTime);
+      caloriesBurnedEl.textContent = Math.floor(totalCaloriesBurned);
+      
+      const totalExercises = activePhases.filter(p => p.type === "exercise").length;
+      exercisesCompletedEl.textContent = `${exercisesCompleted}/${totalExercises}`;
+      
+      if (workoutStartTime) {
+        const elapsed = (Date.now() - workoutStartTime) / 1000;
+        totalTimeEl.textContent = formatTime(Math.floor(elapsed));
+      }
+    }
+
+    function applyPhaseStyle(phase) {
+      titleEl.className = phase.type;
+      timerEl.className = phase.type;
+      containerEl.className = phase.type;
+      
+      progressEl.className = "";
+      progressEl.classList.add(phase.type);
+    }
+
+    function updatePhaseInfo() {
+      // Phase info is now handled by the stats dashboard, no need for bottom text
+      return;
+    }
+
+    function startWorkout(atGym) {
+      isAtGym = atGym;
+      workoutStartTime = Date.now();
+      
+      if (atGym) {
+        activePhases = phases.filter(phase => phase.calisthenics || phase.gym);
+      } else {
+        activePhases = phases.filter(phase => phase.calisthenics && !phase.gym);
+      }
+      
+      // Calculate total workout time for initial display
+      totalWorkoutTime = activePhases.reduce((sum, phase) => sum + phase.duration, 0);
+      totalTimeEl.textContent = formatTime(totalWorkoutTime);
+      timeRemainingEl.textContent = formatTime(totalWorkoutTime);
+      
+      document.getElementById("pre-workout").classList.add("hidden");
+      document.getElementById("timer-container").classList.remove("hidden");
+      
+      currentPhase = 0;
+      createParticles();
+      startCurrentPhase();
+      
+      speak(`Welcome! Let's start your ${atGym ? 'gym' : 'home'} workout!`);
+    }
+
+    function nextPhase() {
+      // Update calories and exercise count
+      const completedPhase = activePhases[currentPhase];
+      totalCaloriesBurned += completedPhase.calories || 0;
+      
+      if (completedPhase.type === "exercise") {
+        exercisesCompleted++;
+      }
+      
+      currentPhase++;
+      
+      if (currentPhase >= activePhases.length) {
+        titleEl.textContent = "Workout Complete!";
+        timerEl.textContent = "🎉";
+        containerEl.classList.add("completed");
+        speak(`Workout complete! You burned ${Math.floor(totalCaloriesBurned)} calories! You're amazing!`);
+        
+        document.getElementById("controls").style.display = "none";
+        return;
+      }
+
+      startCurrentPhase();
+    }
+
+    function startCurrentPhase() {
+      const phase = activePhases[currentPhase];
+      titleEl.textContent = phase.name;
+      timeLeft = phase.duration;
+      totalTime = phase.duration;
+      
+      applyPhaseStyle(phase);
+      updatePhaseInfo();
+      updateProgress(timeLeft, totalTime);
+      updateOverallProgress();
+      updateStats();
+      timerEl.textContent = formatTime(timeLeft);
+
+      if (phase.type === "exercise") {
+        speak(`Start ${phase.name}`);
+      } else {
+        speak("Rest time");
+      }
+
+      if (!isPaused) {
+        startTimer();
+      }
+    }
+
+    function startTimer() {
+      if (intervalId) clearInterval(intervalId);
+      
+      intervalId = setInterval(() => {
+        if (!isPaused) {
+          timeLeft--;
+          timerEl.textContent = formatTime(timeLeft);
+          updateProgress(timeLeft, totalTime);
+          updateStats();
+
+          if (timeLeft <= 5 && timeLeft > 0) {
+            speak(timeLeft.toString());
+          }
+
+          // Announce first workout during warm up (20 seconds before)
+          if (activePhases[currentPhase].name === "Warm Up" && timeLeft === 20 && currentPhase < activePhases.length - 1) {
+            let firstWorkoutIndex = currentPhase + 1;
+            while (firstWorkoutIndex < activePhases.length && activePhases[firstWorkoutIndex].type === "rest") {
+              firstWorkoutIndex++;
+            }
+            
+            if (firstWorkoutIndex < activePhases.length) {
+              const firstWorkout = activePhases[firstWorkoutIndex];
+              speak(`First exercise will be: ${firstWorkout.name}`);
+              titleEl.textContent = `First: ${firstWorkout.name}`;
+            }
+          }
+
+          // Announce next exercise during rest (10 seconds before)
+          if (activePhases[currentPhase].type === "rest" && timeLeft === 10 && currentPhase < activePhases.length - 1) {
+            const nextPhase = activePhases[currentPhase + 1];
+            if (nextPhase.type === "exercise") {
+              speak(`Next exercise: ${nextPhase.name}`);
+              titleEl.textContent = `Next: ${nextPhase.name}`;
+            }
+          }
+
+          if (timeLeft <= 5 && timeLeft > 0) {
+            containerEl.classList.add("pulse");
+          } else {
+            containerEl.classList.remove("pulse");
+          }
+
+          if (timeLeft <= 0) {
+            clearInterval(intervalId);
+            containerEl.classList.remove("pulse");
+            
+            setTimeout(() => {
+              nextPhase();
+            }, 1000);
+          }
+        }
+      }, 1000);
+    }
+
+    function togglePause() {
+      isPaused = !isPaused;
+      pauseBtn.innerHTML = isPaused ? '<i class="fas fa-play"></i>' : '<i class="fas fa-pause"></i>';
+      
+      if (isPaused) {
+        speak("Paused");
+      } else {
+        speak("Resume");
+        if (!intervalId) {
+          startTimer();
+        }
+      }
+    }
+
+    function skipPhase() {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+      speak("Skip");
+      nextPhase();
+    }
+
+    function restartWorkout() {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+      
+      currentPhase = 0;
+      isPaused = false;
+      totalCaloriesBurned = 0;
+      exercisesCompleted = 0;
+      workoutStartTime = Date.now();
+      
+      pauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+      containerEl.classList.remove("completed");
+      document.getElementById("controls").style.display = "flex";
+      
+      speak("Restarting workout");
+      startCurrentPhase();
+    }
+
+    // Initialize when DOM is loaded
+    window.onload = () => {
+      // Event listeners
+      pauseBtn.addEventListener("click", togglePause);
+      skipBtn.addEventListener("click", skipPhase);
+      restartBtn.addEventListener("click", restartWorkout);
+      
+      document.getElementById("gym-yes").addEventListener("click", () => startWorkout(true));
+      document.getElementById("gym-no").addEventListener("click", () => startWorkout(false));
+
+      // Keyboard controls
+      document.addEventListener("keydown", (e) => {
+        switch(e.code) {
+          case "Space":
+            e.preventDefault();
+            if (!document.getElementById("timer-container").classList.contains("hidden")) {
+              togglePause();
+            }
+            break;
+          case "ArrowRight":
+            e.preventDefault();
+            if (!document.getElementById("timer-container").classList.contains("hidden")) {
+              skipPhase();
+            }
+            break;
+          case "KeyR":
+            e.preventDefault();
+            if (!document.getElementById("timer-container").classList.contains("hidden")) {
+              restartWorkout();
+            }
+            break;
+        }
+      });
+
+      // Touch gestures for mobile
+      let touchStartY = 0;
+      document.addEventListener("touchstart", (e) => {
+        touchStartY = e.touches[0].clientY;
+      });
+
+      document.addEventListener("touchend", (e) => {
+        if (document.getElementById("timer-container").classList.contains("hidden")) return;
+        
+        const touchEndY = e.changedTouches[0].clientY;
+        const diff = touchStartY - touchEndY;
+        
+        if (Math.abs(diff) > 50) {
+          if (diff > 0) {
+            togglePause();
+          }
+        }
+      });
+    };
+
+    // Wake lock to prevent screen sleep
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          const wakeLock = await navigator.wakeLock.request('screen');
+        }
+      } catch (err) {
+        console.log('Wake lock not supported');
+      }
+    }
+
+    requestWakeLock();
+  </script>
+</body>
+</html>
